@@ -14,6 +14,7 @@ import NotFound from './components/NotFound.js';
 import Admin from './components/Admin.js';
 import Comments from './components/comments.js';
 import ListSubs from './components/ListSubs.js';
+import Editor from './components/Editor.js';
 
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
@@ -44,6 +45,7 @@ function App() {
                 <Nav.Link href="/">Home</Nav.Link>
                 <Nav.Link href="/upload">Upload</Nav.Link>
 				        <Nav.Link href="/comments">Comments</Nav.Link>
+                <Nav.Link href="/editor">Editor</Nav.Link>
               </Nav>
             </Navbar.Collapse>
 
@@ -63,6 +65,7 @@ function App() {
                 <Route exact path="/" component={(props) => <Home {...props} userEmail={user.email} />} />
                 <Route path="/upload" component={(props) => <Upload {...props} userEmail={user.email} />} />
 				        <Route path ="/comments" component={(props) => <Comments {...props} userEmail={user.email} />}/>
+                <Route path ="/editor" component={(props) => <Editor {...props}/>}/>
                 <Route component={NotFound} />
               </Switch>
             </div>

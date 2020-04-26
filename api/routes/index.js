@@ -69,8 +69,8 @@ router.post('/select', (req, res) => {
       console.error(err);
       return;
     }
-    console.log("Result of query \"" + getQuery + "\":");
-    console.log(JSON.parse(JSON.stringify(response)));
+    console.log("Result of query \"" + getQuery + "\":\n");
+    console.log("< " + JSON.parse(JSON.stringify(response)).length + " records returned >\n");
     res.send(response);
   });
 })
