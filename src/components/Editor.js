@@ -10,6 +10,7 @@ class Editor extends React.Component {
     this.submissions = {
       data: null,
       needingRevs: [],
+      //haveAllRevs: [],
       needingDeadline: [],
       needingDecision: [],
       withRemovalRequests: []
@@ -134,14 +135,47 @@ class Editor extends React.Component {
 
       if (sub.revs.length < 3)  
         this.submissions.needingRevs.push(index);
-      else
-        console.log(`nice: Submission ID '${sub.subID}' has 3+ reviewers already!`); 
+      else {
+        //this.submissions.haveAllRevs.push(index);
+        console.log(`nice: Submission ID '${sub.subID}' has 3+ reviewers already :)`);
+
+        // check to see if all reviewers have completed their reviews
+        let allRevsFinished = true;
+        let rev;
+        for (rev of sub.revs) {
+          if ( !(rev.recommendation === "Accept" || 
+                 rev.recommendation === "Minor Review" || 
+                 rev.recommendation === "Major Review") ) {
+            allRevsFinished = false;
+            break;
+          }
+        }
+        if (allRevsFinished)
+          this.submissions.needingDecision.push(index);
+      }
 
       if (sub.revDeadline === null)
         this.submissions.needingDeadline.push(index);
 
       if (sub.status === "Author requests removal")
         this.submissions.withRemovalRequests.push(index);
+
+      // moved this above to avoid unneccessary work.
+      // Don't think I need the this.submissions.haveAllRevs property anymore.
+      // if (this.submissions.haveAllRevs.includes(index)) {
+      //   let allRevsFinished = true;
+      //   let rev;
+      //   for (rev of sub.revs) {
+      //     if ( !(rev.recommendation === "Accept" || 
+      //            rev.recommendation === "Minor Review" || 
+      //            rev.recommendation === "Major Review") ) {
+      //       allRevsFinished = false;
+      //       break;
+      //     }
+      //   }
+      //   if (allRevsFinished)
+      //     this.submissions.needingDecision.push(index);
+      // }
 
       if (sub.revs.length > 4)
         alert("shit: submission ID " + sub.subID + " has " + 
@@ -176,7 +210,8 @@ class Editor extends React.Component {
           {this.submissions.withRemovalRequests.length} Articles have removal requests
           <br/>
           <br/>
-          __Z Articles require your editorial decision__ (how do you know this?)  BOOKMARK
+          {this.submissions.needingDecision.length} {this.submissions.needingDecision.length === 1 ? 
+            "Article requires" : "Articles require"} your editorial decision (also need to account for expired review deadline ones)
           <br/>
           <br/>
           <br/>

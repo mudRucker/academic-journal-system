@@ -338,7 +338,7 @@ reviewBoxGate = (subID, reviewerID) => { // the in-class version of a 1-time doo
           {/* determines whether to show the review box: */}
           { this.state.showRevBox && 
             <div>
-              <h2>Review this article: (don't show this section if user hasn't been assigned to review it)</h2>
+              <h2>Review this article: (show this if they've aleady reviewed it? Can they edit it?)</h2>
               <br/>
               {this.selectScreen()} 
             </div> }
