@@ -100,3 +100,11 @@ body::after {
 .reviewTable td {
   padding: 8px 4px
 }
+#editor-page button {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  color: white;
+  text-decoration: underline;
+}

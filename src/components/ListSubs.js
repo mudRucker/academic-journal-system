@@ -66,7 +66,6 @@ class ListSubs extends React.Component {
           let origIndex = 0;
           let rowIndex = 1;
           for (let i = 0; i < numSubs; i++) {
-
             origIndex = i;
             this.setState({subID: subInfo[origIndex].subID});
             while ( (i+1 < numSubs)  &&  (subInfo[i+1].subID === subInfo[origIndex].subID) ) {
@@ -102,10 +101,10 @@ class ListSubs extends React.Component {
             <thead>
               <tr>
                 <th style={{padding: '0 0 8px 10px'}}>#</th>
-                <th><button onClick={ (ev) => this.getSubRows(true, "title", ev) }>Research Title</button></th>
-                <th><button onClick={ (ev) => this.getSubRows(true, "description", ev) }>Description</button></th>
-                <th><button onClick={ (ev) => this.getSubRows(true, "topic", ev) }>Topic</button></th>
-                <th><button onClick={ (ev) => this.getSubRows(true, "status", ev) }>Status</button></th>
+                <th><button onClick={ (ev) => this.getSubRows(true, "title") }>Research Title</button></th>
+                <th><button onClick={ (ev) => this.getSubRows(true, "description") }>Description</button></th>
+                <th><button onClick={ (ev) => this.getSubRows(true, "topic") }>Topic</button></th>
+                <th><button onClick={ (ev) => this.getSubRows(true, "status") }>Status</button></th>
                 <th style={{padding: '0 0 8px 10px'}}>File</th>
               </tr>
             </thead>
@@ -121,4 +120,3 @@ class ListSubs extends React.Component {
 }
 
 export default ListSubs;
-
