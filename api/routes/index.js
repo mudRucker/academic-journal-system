@@ -89,9 +89,10 @@ router.get("/select", function(req, res, next) {
 
 
 
-// used for UPDATE queries, specifically for SUBMISSIONS
+// used for general UPDATE queries 
+// (not sanitized, so only use for controlled inputs)
 
-router.post('/update-submission', (req, res) => {
+router.post('/update', (req, res) => {
   let query = req.body.query;
   console.log("Query string received from client:\n" + query);
   pool.query(query, (err, response) => {

@@ -100,7 +100,12 @@ body::after {
 .reviewTable td {
   padding: 8px 4px
 }
-#editor-page button {
+
+#editor-page {
+  text-align: center;
+  margin: 50px auto;
+}
+#editorMainMenu button, #articlesNeedingRevs button {
   border: 0;
   margin: 0;
   padding: 0;

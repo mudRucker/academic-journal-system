@@ -82,7 +82,7 @@ class Upload extends Component {
     optionRows.push(<option key={"blankLine"} value={'blankLine'} disabled></option>);
 
     for (let i = 0; i < size; i++) {
-      if (users[i].email === "default@nobody.net")
+      if (users[i].email === "default@nobody.net")  // FIX wtf is this part about?
         continue;
       optionRows.push(<option key={"val" + i} value={users[i].email}>{users[i].fName} {users[i].lName}</option>);
     }

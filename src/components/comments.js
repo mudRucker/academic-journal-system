@@ -292,9 +292,9 @@ reviewBoxGate = (subID, reviewerID) => { // the in-class version of a 1-time doo
 
 
 
-  changeSubStatusToReqRemoval = (env) => {
+  changeSubStatusToReqRemoval = (ev) => {
       const myQuery = "UPDATE SUBMISSION  SET status = 'Author requests removal' WHERE subID = " + this.state.subID;
-      fetch('http://localhost:9000/update-submission', {
+      fetch('http://localhost:9000/update', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({query: myQuery})  // convert the state to JSON and send it as the POST body 

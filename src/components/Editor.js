@@ -7,24 +7,32 @@ class Editor extends React.Component {
     super(props);
     this.state = {
       allQueriesComplete: false,
-      currentPage: "main",
+      changesMade: false,
+      currentPage: "main"
     };
+
+    
     this.submissions = {
-      data: null,
-      needingRevs: [],
-      //haveAllRevs: [],
-      needingDeadline: [],
-      needingDecision: [],
-      withRemovalRequests: []
-    }
-    this.reviews = null;
-    this.nominated = null;
-    this.requests = null;
+      data: null,               // retrieved
+
+      needingRevs: [],          // calculated, contains indexes of .data
+      needingDeadline: [],      // calculated, contains indexes of .data
+      needingDecision: [],      // calculated, contains indexes of .data
+      withRemovalRequests: []   // calculated, contains indexes of .data
+    } 
+    this.reviews = null;        // retrieved
+    this.nominated = null;      // retrieved
+    this.requests = null;       // retrieved
+    this.users = null;          // retrieved
+    this.reviewers = [];        // calculated
+
+    this.subUpdateQuery = "";   // gets built
+    this.revInsertQuery = "";   // gets built
   }
 
 
 
-  // grab all the data from the db when the page first loads
+  // grab all the needed data from the db when page first loads
   componentDidMount = () => {
     // ToFix: there's probably a way to query the db once where all the info appears in one super table.
     // Need to brush up on my SQL to figure that out. For now, I'll do the select queries separately.
@@ -38,10 +46,10 @@ class Editor extends React.Component {
     }).then(response => {
       response.json().then(data => {
         // this.setState({serverResponse: JSON.parse(JSON.stringify(data))});
-        console.log("server response for SUBMISSION query: \n");
-        console.log(data);
+        //console.log("server response for SUBMISSION query: \n");
+        //console.log(data);
         this.submissions.data = data;
-        this.addRevsAttributeToSubs();
+        this.addExtraAttributesToSubs();
 
         // retrieve all reviewer records
         myQuery = "SELECT * FROM REVIEWS";
@@ -51,8 +59,8 @@ class Editor extends React.Component {
           body: JSON.stringify({query: myQuery})   
         }).then(response => {
           response.json().then(data => {
-            console.log("server response for REVIEWS query: \n");
-            console.log(data);
+            //console.log("server response for REVIEWS query: \n");
+            //console.log(data);
             this.reviews = data;
 
             // add the rev to the sub they belong to
@@ -65,7 +73,7 @@ class Editor extends React.Component {
 
             this.calcSubStatsForMainPage();
 
-            // BLAH TRYING to do it more efficiently (got confusing, so do it later. Brute force for now ^)
+            // FIX: TRYING to do it more efficiently (got confusing, so do it later. Brute force for now ^)
             // trying to keep track of a found review's submission's index in the this.submissions.data array so 
             // that a review for the same submission wouldn't need to search for that submission agian...abs
 
@@ -93,10 +101,17 @@ class Editor extends React.Component {
           body: JSON.stringify({query: myQuery})   
         }).then(response => {
           response.json().then(data => {
-            console.log("server response for NOMINATED query: \n");
-            console.log(data);
+            //console.log("server response for NOMINATED query: \n");
+            //console.log(data);
             this.nominated = data;
 
+            // add the nominated revs to the sub they belong to
+            this.nominated.forEach((nom, i, arr) => {
+              this.submissions.data.forEach((sub, j, arr2) => {
+                if (nom.subID === sub.subID)
+                  sub.noms.push(nom);
+              });
+            });  // FIX: could also do this the more efficient way, attempted above ^
 
             if(this.checkIfAllQueriesComplete()) 
               this.setState({allQueriesComplete: true});
@@ -111,11 +126,36 @@ class Editor extends React.Component {
           body: JSON.stringify({query: myQuery})   
         }).then(response => {
           response.json().then(data => {
-            console.log("server response for REQUESTS query: \n");
-            console.log(data);
+            //console.log("server response for REQUESTS query: \n");
+            //console.log(data);
             this.requests = data;
 
+            // add the requested revs to the sub they belong to
+            this.requests.forEach((req, i, arr) => {
+              this.submissions.data.forEach((sub, j, arr2) => {
+                if (req.subID === sub.subID)
+                  sub.reqs.push(req);
+              });
+            });  // FIX: could also do this the more efficient way, attempted above ^
 
+            if(this.checkIfAllQueriesComplete()) 
+              this.setState({allQueriesComplete: true});
+          });
+        });
+
+        // retrieve all users... not sure I'll actually use this
+        myQuery = "SELECT * FROM USERS";
+        fetch('http://localhost:9000/select', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({query: myQuery})   
+        }).then(response => {
+          response.json().then(data => {
+            //console.log("server response for USERS query: \n");
+            //console.log(data);
+            this.users = data;
+            this.getReviewers();
+            
             if(this.checkIfAllQueriesComplete()) 
               this.setState({allQueriesComplete: true});
           });
@@ -126,8 +166,10 @@ class Editor extends React.Component {
   }
 
 
-  addRevsAttributeToSubs = () => {
-    this.submissions.data.forEach((sub, i, arr) => { sub.revs = [] });
+  addExtraAttributesToSubs = () => {
+    this.submissions.data.forEach((sub, i, arr) => { 
+      sub.revs = [];  sub.noms = [];  sub.reqs = [];
+    });
   }
 
 
@@ -172,10 +214,11 @@ class Editor extends React.Component {
 
 
   checkIfAllQueriesComplete = () => {
-    if(this.submissions.data != null &&
-       this.reviews != null &&
-       this.nominated != null &&
-       this.requests != null)
+    if (this.submissions.data != null &&
+        this.reviews != null &&
+        this.nominated != null &&
+        this.requests != null &&
+        this.users != null)
       return true;
 
     return false;
@@ -186,8 +229,11 @@ class Editor extends React.Component {
 
   mainMenuComp = () => {
     return (
-      <>
-        <button onClick = { (ev) => this.setState({currentPage: "articlesNeedingRevsTable"})} >{this.submissions.needingRevs.length} Articles need Reviewers assigned to them</button>
+      <div id="editorMainMenu">
+        <h1>Welcome, Editor</h1>
+        <br/>
+        <button onClick = { (ev) => this.setState({currentPage: "articlesNeedingRevsTable"})
+                          } >{this.submissions.needingRevs.length} Articles need Reviewers assigned to them</button>
         <br/>
         {this.submissions.needingDeadline.length} Articles need a deadline set
         <br/>
@@ -209,103 +255,152 @@ class Editor extends React.Component {
         <br/>
         <br/>
         (cody: make sure this guy has a special view of the article pages that lets him edit everything about it)
-      </>
+      </div>
     );
   }
 
 
   articlesNeedingRevsTableComp = () => {
-    return (<>remove this when you uncomment the below stuff</>
-      // <Container className='container-override'>
-      //   <Table striped bordered hover>
-      //     <thead>
-      //       <tr>
-      //         <th style={{padding: '0 0 8px 10px'}}>#</th>
-      //         <th><button onClick={ (ev) => this.getTable("title") }>Research Title</button></th>
-      //         <th><button onClick={ (ev) => this.getTable("status") }>Status</button></th>
-      //         <th><button onClick={ (ev) => this.getTable("nominatedRevs") }>Nominated Reviewers</button></th>
-      //         <th><button onClick={ (ev) => this.getTable("assignedRevs") }>Assigned Reviewers</button></th>
-      //         <th><button onClick={ (ev) => this.getTable("deadline") }>Deadline</button></th>
-      //       </tr>
-      //     </thead>
-      //     <tbody>
-      //       { this.getTable("") }
-      //     </tbody>
-      //   </Table>
-      // </Container>
+    return (
+      <>
+        { this.state.changesMade && 
+          <div style={{float: "left", position: "fixed", top: "100px", left: "15px"}}> 
+            <button onClick={ (evnt) => {this.applyChanges()} }>Apply Changes</button>
+          </div> 
+        }
+
+        <div id="articlesNeedingRevs">
+          <br/>
+          <h2>Articles that need reviewers assigned to them</h2>
+          <br/>
+          <Container style={{maxWidth: "1100px"}}>
+            <Table striped bordered hover>
+              <thead>
+                <tr>
+                  <th style={{padding: '0 0 8px 10px'}}>#</th>
+                  <th><button onClick={ (ev) => this.getTable("title") }>Title</button></th>
+                  <th><button onClick={ (ev) => this.getTable("status") }>Status</button></th>
+                  <th style={{maxWidth: '220px'}}><button onClick={ 
+                                        (ev) => this.getTable("nominatedRevs") }>Nominated Reviewers</button></th>
+                  <th style={{maxWidth: '260px'}}><button onClick={ (ev) => this.getTable("assignedRevs") }>Assigned Reviewers</button></th>
+                  <th><button onClick={ (ev) => this.getTable("deadline") }>Review Deadline</button></th>
+                </tr>
+              </thead>
+              <tbody>
+                { this.getTable("") }
+              </tbody>
+            </Table>
+          </Container>
+        </div>
+      </>
     );
   }
 
 
-  getTable = (sortBy) => { // BOOKMARK. gotta mod this so it works for this Component (taken from ListSubs)
-    let myQuery = "";
-    switch(sortBy) {
-      case "title":
-        myQuery = "SELECT S.subID, S.title, S.description, S.status, S.fileURL, T.subID AS TopicID," +
-                  "T.topic FROM SUBMISSION S LEFT JOIN TOPICS T ON S.subID = T.subID ORDER BY S.title";
-        break;
-      case "description":
-        myQuery = "SELECT S.subID, S.title, S.description, S.status, S.fileURL, T.subID AS TopicID," +
-                  "T.topic FROM SUBMISSION S LEFT JOIN TOPICS T ON S.subID = T.subID ORDER BY S.description";
-        break;
-      case "topic": 
-        myQuery = "SELECT S.subID, S.title, S.description, S.status, S.fileURL, T.subID AS TopicID," +
-                  "T.topic FROM SUBMISSION S LEFT JOIN TOPICS T ON S.subID = T.subID ORDER BY T.topic";
-        break;
-      case "status":
-        myQuery = "SELECT S.subID, S.title, S.description, S.status, S.fileURL, T.subID AS TopicID," +
-                  "T.topic FROM SUBMISSION S LEFT JOIN TOPICS T ON S.subID = T.subID ORDER BY S.status";
-        break;
-      default:
-        myQuery = "SELECT S.subID, S.title, S.description, S.status, S.fileURL, T.subID AS TopicID," +
-                  "T.topic FROM SUBMISSION S LEFT JOIN TOPICS T ON S.subID = T.subID ORDER BY S.title";
-    }
-    if (sortBy === this.currentSort) {
-      this.toggleCount++;
-      if (this.toggleCount % 2 === 1)
-        myQuery += " DESC";
-    } else {
-      this.toggleCount = 0;
-      this.currentSort = sortBy;
-    }
-    
-    fetch('http://localhost:9000/select', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: myQuery })
-    }).then(response => {
-      response.json().then(data => {
-        let subInfo = JSON.parse(JSON.stringify(data));
-        //console.log(data);
-        const numSubs = subInfo.length;
-        let tableRows = [];
-        let origIndex = 0;
-        let rowIndex = 1;
-        for (let i = 0; i < numSubs; i++) {
-          origIndex = i;
-          this.setState({subID: subInfo[origIndex].subID});
-          while ( (i+1 < numSubs)  &&  (subInfo[i+1].subID === subInfo[origIndex].subID) ) {
-            subInfo[origIndex].topic += ", " + subInfo[i+1].topic;
-            i++;
-          }
-
-        tableRows.push(
-          <tr key={rowIndex}>
-            <td>{rowIndex}</td>
-
-            <td><a href={'comments?subID=' + subInfo[origIndex].subID}>{subInfo[origIndex].title}</a></td>
-            {/* <Nav.Link href="/comments">{subInfo[origIndex].title}</Nav.Link> */}
-            <td style={{maxWidth: '570px'}}>{subInfo[origIndex].description}</td>
-            <td>{subInfo[origIndex].topic}</td>
-            <td>{subInfo[origIndex].status}</td>
-            <td><a href={subInfo[origIndex].fileURL}>download</a></td>
-          </tr>);
-          rowIndex++;
-        }
-        this.setState({tableRows: tableRows});
-      });
-    });
+  applyChanges = () => {
+    alert("POOPDEE!");
   }
+
+
+  getTable = (sortBy) => {
+    let tableRows = [];
+    let rowIndex = 1;
+    let subs = this.submissions.data;
+    let nom;
+    let nomStr = "";
+    // FIX: the below line was used to ensure sub's author didn't appear in the revs list to choose from (removed for speed)
+    // let revOptionsForThisSub = this.reviewers.filter((x) => {return x.email !== sub.author});
+    let revOptions = this.getRevDropdown(this.reviewers);
+    let i;
+    for (i of this.submissions.needingRevs) {
+      for (nom of subs[i].noms)
+        nomStr += nom.reviewerID + ", ";
+      tableRows.push(
+        <tr key={rowIndex}>
+          <td>{rowIndex++}</td>
+          <td><a href={'comments?subID=' + subs[i].subID}>{subs[i].title}</a></td>
+          <td>{subs[i].status}</td>
+          <td style={{maxWidth: '220px'}}>{nomStr}</td>
+          <td style={{maxWidth: '260px'}}>{this.displayAssignedRevsCell(subs[i], revOptions)}</td> 
+          <td>{subs[i].revDeadline === null ? <>assign: <input type="date" id="revDeadline" 
+               onChange={this.myChangeHandler.bind(this, subs[i])} name="revDeadline" min="2020-01-01" 
+               max="9999-01-01"/></> : subs[i].revDeadline}</td>
+        </tr> 
+      );
+      nomStr = "";
+    }
+    return tableRows;
+  }
+
+
+  // show revs AND (4 - subs[i].revs.length) input select boxes of reviewers to select
+  displayAssignedRevsCell = (sub, revOptions) => {
+    let currentRevs = "";
+    for (let rev of sub.revs)
+      currentRevs += rev.reviewerID + ", ";
+    let maxRevsLeftToAssign = (4 - sub.revs.length);
+    let revSelect = [];
+    for (let i = 0; i < maxRevsLeftToAssign; i++) {
+      revSelect.push(
+        <select key={'cal'+i} type='email' name='revToAdd' defaultValue='selectMsg' 
+                  onChange={this.myChangeHandler.bind(this, sub)}> 
+          {revOptions}
+        </select>
+      );
+    }
+    return ( <>{currentRevs} {revSelect}</> );
+  }
+
+
+  getRevDropdown(revOptions) {
+    let optionRows = [];
+    optionRows.push(<option key={"selectMsg"} value={'selectMsg'} disabled> &nbsp; - select reviewer -&nbsp; &nbsp; </option>);
+    optionRows.push(<option key={"blankLine"} value={'blankLine'} disabled></option>);
+    let keyTag = 1;
+    for (let reviewer of revOptions)
+      optionRows.push(<option key={"rev" + keyTag++} value={reviewer.email}>{reviewer.fName} {reviewer.lName}</option>);
+
+    return optionRows;
+  }
+
+
+  getReviewers = () => {
+    let user;
+    for (user of this.users)
+      if (user.isReviewer)
+        this.reviewers.push(user);
+  }
+
+
+  myChangeHandler = (sub, event) => {
+    let name = event.target.name;
+    let val =  event.target.value;
+    if (name === "revDeadline") {
+      sub.revDeadline = val;
+      this.subUpdateQuery += "UPDATE SUBMISSION SET revDeadline = " + val + " WHERE subID = " + sub.subID + "; ";
+    } else {
+      //sub.revs.push() // BOOKMARK: need to push a new REVIEWS entry into the structure
+      this.revInsertQuery += "INSERT ";
+    }
+    if (! this.changesMade)
+      this.setState({changesMade: true});
+  }
+
+
+// DO SOMETHING LIKE THIS WHEN USER CLICKS AN APPLY BUTTON SOMEHWERE ON THE PAGE
+//   applyChanges = (ev) => {
+//     const myQuery = "UPDATE SUBMISSION  SET status = 'Author requests removal' WHERE subID = " + this.state.subID;
+//     fetch('http://localhost:9000/update', {
+//     method: 'POST',
+//     headers: {'Content-Type': 'application/json'},
+//     body: JSON.stringify({query: myQuery})  // convert the state to JSON and send it as the POST body 
+//   }).then(response => {
+//       response.text().then(msg => {
+//         this.setState({serverResponse: JSON.stringify(msg)});
+//         console.log("Result of UPDATE query on SUBMISSION: " + msg);
+//       });
+//     });
+// }
 
 
   menuSwitch = () => {
@@ -325,11 +420,7 @@ class Editor extends React.Component {
   render() {
     return (
       <div id="editor-page">
-        <div style={{width: "700px", textAlign: "center", margin: "50px auto"}}>
-          <h1>Welcome, Editor (name)</h1>
-          <br/>
-          { this.state.allQueriesComplete && this.menuSwitch() }
-        </div>
+        { this.state.allQueriesComplete && this.menuSwitch() }
       </div>
     );
   }
