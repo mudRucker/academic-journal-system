@@ -26,8 +26,9 @@ class Editor extends React.Component {
     this.users = null;          // retrieved
     this.reviewers = [];        // calculated
 
-    this.subUpdateQuery = "";   // gets built
-    this.revInsertQuery = "";   // gets built
+    this.dbChangeQueries = "";  // gets built
+
+    this.submissionsCopy = null;// used for undoing changes
   }
 
 
@@ -261,11 +262,16 @@ class Editor extends React.Component {
 
 
   articlesNeedingRevsTableComp = () => {
+    if (! this.state.changesMade)  // only make this copy when initially loading page or after submitting changes
+      this.submissionsCopy = JSON.parse(JSON.stringify(this.submissions));
+
     return (
       <>
         { this.state.changesMade && 
-          <div style={{float: "left", position: "fixed", top: "100px", left: "15px"}}> 
+          <div style={{position: "fixed", top: "100px", right: "15px"}}> 
             <button onClick={ (evnt) => {this.applyChanges()} }>Apply Changes</button>
+            <br/>
+            <button onClick={ (evnt) => {this.undoChanges()} }>Undo Changes</button>
           </div> 
         }
 
@@ -298,7 +304,24 @@ class Editor extends React.Component {
 
 
   applyChanges = () => {
-    alert("POOPDEE!");
+    // retrieve all users... not sure I'll actually use this
+    const myQuery = this.dbChangeQueries;
+    fetch('http://localhost:9000/general', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({query: myQuery})   
+    }).then(response => {
+      response.text().then(msg => {
+        console.log("server response from applying changes: \n" + msg);
+        this.dbChangeQueries = "";
+        this.setState({changesMade: false});
+      });
+    });
+  }
+
+
+  undoChanges = () => {
+    alert("doopdee!");
   }
 
 
@@ -306,6 +329,7 @@ class Editor extends React.Component {
     let tableRows = [];
     let rowIndex = 1;
     let subs = this.submissions.data;
+    let subsCopyForDisplaying = this.submissionsCopy.data;
     let nom;
     let nomStr = "";
     // FIX: the below line was used to ensure sub's author didn't appear in the revs list to choose from (removed for speed)
@@ -313,6 +337,7 @@ class Editor extends React.Component {
     let revOptions = this.getRevDropdown(this.reviewers);
     let i;
     for (i of this.submissions.needingRevs) {
+      let index = i;  // important: had to use for the function defined below, to avoid it always binding i to last value.
       for (nom of subs[i].noms)
         nomStr += nom.reviewerID + ", ";
       tableRows.push(
@@ -321,10 +346,10 @@ class Editor extends React.Component {
           <td><a href={'comments?subID=' + subs[i].subID}>{subs[i].title}</a></td>
           <td>{subs[i].status}</td>
           <td style={{maxWidth: '220px'}}>{nomStr}</td>
-          <td style={{maxWidth: '260px'}}>{this.displayAssignedRevsCell(subs[i], revOptions)}</td> 
-          <td>{subs[i].revDeadline === null ? <>assign: <input type="date" id="revDeadline" 
-               onChange={this.myChangeHandler.bind(this, subs[i])} name="revDeadline" min="2020-01-01" 
-               max="9999-01-01"/></> : subs[i].revDeadline}</td>
+          <td style={{maxWidth: '260px'}}>{this.displayAssignedRevsCell(subs[i], subsCopyForDisplaying[i], revOptions)}</td> 
+          <td>{subsCopyForDisplaying[i].revDeadline === null ? <>assign: <input type="date" id="revDeadline" 
+               onChange={(ev) => {this.myChangeHandler(subs[index], ev)}} name="revDeadline" min="2020-01-01" 
+               max="9999-01-01"/></> : String(subsCopyForDisplaying[i].revDeadline).substring(0,10)}</td> 
         </tr> 
       );
       nomStr = "";
@@ -334,16 +359,16 @@ class Editor extends React.Component {
 
 
   // show revs AND (4 - subs[i].revs.length) input select boxes of reviewers to select
-  displayAssignedRevsCell = (sub, revOptions) => {
+  displayAssignedRevsCell = (sub, subsCopyForDisplaying, revOptions) => {
     let currentRevs = "";
-    for (let rev of sub.revs)
+    for (let rev of subsCopyForDisplaying.revs)
       currentRevs += rev.reviewerID + ", ";
-    let maxRevsLeftToAssign = (4 - sub.revs.length);
+    let maxRevsLeftToAssign = (4 - subsCopyForDisplaying.revs.length);
     let revSelect = [];
     for (let i = 0; i < maxRevsLeftToAssign; i++) {
       revSelect.push(
         <select key={'cal'+i} type='email' name='revToAdd' defaultValue='selectMsg' 
-                  onChange={this.myChangeHandler.bind(this, sub)}> 
+                onChange={(ev) => {this.myChangeHandler(sub, ev)}}> 
           {revOptions}
         </select>
       );
@@ -371,18 +396,21 @@ class Editor extends React.Component {
         this.reviewers.push(user);
   }
 
+// BOOKMARK: things are generally working well now, but there's a problem here: 
+// if I choose from a dropdown menu, then I change my mind and change my selection from that same dropdown, it has now
+// called this method twice, and two entries will be entered into the db and the internal data structure, which we don't want.
 
   myChangeHandler = (sub, event) => {
-    let name = event.target.name;
     let val =  event.target.value;
-    if (name === "revDeadline") {
+    if (event.target.name === "revDeadline") {
       sub.revDeadline = val;
-      this.subUpdateQuery += "UPDATE SUBMISSION SET revDeadline = " + val + " WHERE subID = " + sub.subID + "; ";
-    } else {
-      //sub.revs.push() // BOOKMARK: need to push a new REVIEWS entry into the structure
-      this.revInsertQuery += "INSERT ";
+      this.dbChangeQueries += `UPDATE SUBMISSION SET revDeadline = '${val}' WHERE subID = ${sub.subID}; `;
+    } else {  // else new reviewer assigned to sub
+      const rev = {subID: sub.subID, reviewerID: val, deadline: sub.revDeadline, recommendation: null, comment: null};
+      sub.revs.push(rev);
+      this.dbChangeQueries += `INSERT INTO REVIEWS VALUES (${sub.subID}, '${val}', '${sub.revDeadline}', NULL, NULL); `;
     }
-    if (! this.changesMade)
+    if (! this.state.changesMade)
       this.setState({changesMade: true});
   }
 

@@ -37,6 +37,10 @@ router.get("/update", function(req, res, next){
   res.send("API for review UPDATE queries is working properly");
 });
 
+
+
+
+
 function addReview(review) {
   let insertQuery = "INSERT INTO ?? VALUES (?,?,?,?,?)";
   let params = ["REVIEWS", review.subID, review.reviewerID, review.deadline, review.recommendation, review.comments];
@@ -58,14 +62,17 @@ router.post('/insert', (req, res) => {
   setTimeout(() => {  // timeout avoids firing query before connection happens
     addReview(review);
     
- }, 2000);
+ }, 500);
 
   res.send("New review added");  // response back to client. min: response.end();
 });
 
 
+
+
+
 router.get("/", function(req, res, next) {
-  res.send("review INSERT API is working properly");
+  res.send("reviewAPI is working properly");
 });
 
 module.exports = router;

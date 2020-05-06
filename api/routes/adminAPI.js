@@ -101,7 +101,7 @@ router.post('/insert', (req, res) => {
   setTimeout(() => {  // timeout avoids firing query before connection happens
     addUser(user);
     sketchyPostSignup(user);
-  }, 2000);
+  }, 500); // timeout used to be 2000 (2s)
 
   res.send("New user added");  // response back to client. min: response.end();
 });
@@ -111,7 +111,7 @@ router.post('/insert', (req, res) => {
 
 
 router.get("/", function(req, res, next) {
-  res.send("admin INSERT API is working properly");
+  res.send("adminAPI is working properly");
 });
 
 module.exports = router;

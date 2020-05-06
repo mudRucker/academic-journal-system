@@ -16,7 +16,8 @@ var pool = mysql.createPool({  // using a pool so can handle multiple queries ov
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PW,
-  debug: false
+  debug: false,
+  multipleStatements: true
 });  // contact Cody for these details if stuck
 
 
@@ -28,6 +29,23 @@ var pool = mysql.createPool({  // using a pool so can handle multiple queries ov
 
 
 
+
+
+
+// use this for general queries where you control all inputs. 
+// It's not parameterized, so be careful with this.
+router.post('/general', (req, res) => {
+  let myQuery = req.body.query;
+  pool.query(myQuery, (err, response) => {
+    console.log("Connecting to database...\n");
+    if (err) {
+      console.error(err);
+      return;
+    }
+    console.log(`Query '${myQuery}' successful!`);
+    res.send("General query successful!");
+  });
+})
 
 
 
