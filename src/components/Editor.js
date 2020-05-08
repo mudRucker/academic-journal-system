@@ -14,9 +14,7 @@ class Editor extends React.Component {
     
     this.submissions = {
       data: null,               // retrieved
-
-      needingRevs: [],          // calculated, contains indexes of .data
-      needingDeadline: [],      // calculated, contains indexes of .data
+      needingAssignments: [],   // calculated, contains indexes of .data
       needingDecision: [],      // calculated, contains indexes of .data
       withRemovalRequests: []   // calculated, contains indexes of .data
     } 
@@ -39,7 +37,7 @@ class Editor extends React.Component {
     // Need to brush up on my SQL to figure that out. For now, I'll do the select queries separately.
 
     // retrieve all submissions
-    let myQuery = "SELECT * FROM SUBMISSION";
+    let myQuery = "SELECT * FROM SUBMISSION, USERS WHERE author = email"  //"SELECT * FROM SUBMISSION";
     fetch('http://localhost:9000/select', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -53,7 +51,7 @@ class Editor extends React.Component {
         this.addExtraAttributesToSubs();
 
         // retrieve all reviewer records
-        myQuery = "SELECT * FROM REVIEWS";
+        myQuery = "SELECT * FROM REVIEWS, USERS WHERE reviewerID = email";  //"SELECT * FROM REVIEWS";
         fetch('http://localhost:9000/select', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -94,8 +92,8 @@ class Editor extends React.Component {
           });
         });
 
-        // retrieve all reviewer nominations
-        myQuery = "SELECT * FROM NOMINATED";
+        // retrieve all reviewer nominations (and add in the nominated user's name)
+        myQuery = "SELECT subID, reviewerID, fName, lName FROM NOMINATED, USERS WHERE reviewerID = email";  //"SELECT * FROM NOMINATED";
         fetch('http://localhost:9000/select', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -119,8 +117,8 @@ class Editor extends React.Component {
           });
         });
 
-        // retrieve all review requests
-        myQuery = "SELECT * FROM REQUESTS";
+        // retrieve all review requests (and add in the requestor's name)
+        myQuery = "SELECT subID, reviewerID, fName, lName FROM REQUESTS, USERS WHERE reviewerID = email";  //"SELECT * FROM REQUESTS";
         fetch('http://localhost:9000/select', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -178,11 +176,17 @@ class Editor extends React.Component {
     this.submissions.data.forEach((sub, index, arr) => {
 
       if (sub.revs.length < 3)  
-        this.submissions.needingRevs.push(index);
-      else {
-        //this.submissions.haveAllRevs.push(index);
-        console.log(`nice: Submission ID '${sub.subID}' has 3+ reviewers already :)`);
+        this.submissions.needingAssignments.push(index);
+     
+      else if (sub.revs.length > 4)  // just in case something went wrong elsewhere in the system
+        alert("uh oh.. submission ID " + sub.subID + " has " + 
+              sub.revs.length + " reviewers assigned to it.");  
 
+      else if (sub.revDeadline === null)
+        this.submissions.needingAssignments.push(index);
+
+      else {  // sub.revs.length >= 3
+        console.log(`nice: Submission ID '${sub.subID}' has 3+ reviewers already :)`);
         // check to see if all reviewers have completed their reviews
         // ...and therefore if this submission needs an editorial decision
         let allRevsFinished = true;
@@ -199,18 +203,9 @@ class Editor extends React.Component {
           this.submissions.needingDecision.push(index);
       }
 
-      if (sub.revDeadline === null)
-        this.submissions.needingDeadline.push(index);
-
       if (sub.status === "Author requests removal")
         this.submissions.withRemovalRequests.push(index);
-
-      // just in case something went wrong elsewhere in the system
-      if (sub.revs.length > 4)
-        alert("shit: submission ID " + sub.subID + " has " + 
-              sub.revs.length + " reviewers assigned to it.");        
     });
-
   }
 
 
@@ -233,17 +228,11 @@ class Editor extends React.Component {
       <div id="editorMainMenu">
         <h1>Welcome, Editor</h1>
         <br/>
-        <button onClick = { (ev) => this.setState({currentPage: "articlesNeedingRevsTable"})
-                          } >{this.submissions.needingRevs.length} Articles need Reviewers assigned to them</button>
+        <button onClick = { (ev) => this.setState({currentPage: "articlesNeedingAssignments"})
+                          } >{this.submissions.needingAssignments.length} articles need to have reviewers/dates assigned to them</button>
         <br/>
-        {this.submissions.needingDeadline.length} Articles need a deadline set
         <br/>
         {this.submissions.withRemovalRequests.length} Articles have removal requests
-        <br/>
-        <br/>
-        X Reviewer nominations require your attention
-        <br/>
-        X Review requests require your attention
         <br/>
         <br/>
         {this.submissions.needingDecision.length} {this.submissions.needingDecision.length === 1 ? 
@@ -251,17 +240,21 @@ class Editor extends React.Component {
         <br/>
         <br/>
         <br/>
+        __God mode edit view of all articles__
+        <br/>
         <br/>
         __Publish a completed academic journal__
         <br/>
         <br/>
-        (cody: make sure this guy has a special view of the article pages that lets him edit everything about it)
+        <br/>
+        <br/>
+        (cody: also make sure this guy has a special view of the article pages that lets him edit everything about it)
       </div>
     );
   }
 
 
-  articlesNeedingRevsTableComp = () => {
+  articlesNeedingAssignmentsComp = () => {
     if (! this.state.changesMade)  // only make this copy when initially loading page or after submitting changes
       this.submissionsCopy = JSON.parse(JSON.stringify(this.submissions));
 
@@ -275,9 +268,9 @@ class Editor extends React.Component {
           </div> 
         }
 
-        <div id="articlesNeedingRevs">
+        <div id="articlesNeedingAssignments">
           <br/>
-          <h2>Articles that need reviewers assigned to them</h2>
+          <h2>Articles that need reviewers/deadlines assigned to them:</h2>
           <br/>
           <Container style={{maxWidth: "1100px"}}>
             <Table striped bordered hover>
@@ -288,6 +281,8 @@ class Editor extends React.Component {
                   <th><button onClick={ (ev) => this.getTable("status") }>Status</button></th>
                   <th style={{maxWidth: '220px'}}><button onClick={ 
                                         (ev) => this.getTable("nominatedRevs") }>Nominated Reviewers</button></th>
+                  <th style={{maxWidth: '220px'}}><button onClick={ 
+                                        (ev) => this.getTable("requestedRevs") }>Requesting to Review</button></th>                      
                   <th style={{maxWidth: '260px'}}><button onClick={ (ev) => this.getTable("assignedRevs") }>Assigned Reviewers</button></th>
                   <th><button onClick={ (ev) => this.getTable("deadline") }>Review Deadline</button></th>
                 </tr>
@@ -321,7 +316,10 @@ class Editor extends React.Component {
 
 
   undoChanges = () => {
-    alert("doopdee!");
+    this.submissions = JSON.parse(JSON.stringify(this.submissionsCopy));
+    this.dbChangeQueries = "";
+    console.log("changes undone; information reset!");
+    this.setState({changesMade: false, currentPage: "reloadANAcomp"});
   }
 
 
@@ -330,29 +328,32 @@ class Editor extends React.Component {
     let rowIndex = 1;
     let subs = this.submissions.data;
     let subsCopyForDisplaying = this.submissionsCopy.data;
-    let nom;
-    let nomStr = "";
+    let nom, req;
+    let nomList = [], reqList = [];
     // FIX: the below line was used to ensure sub's author didn't appear in the revs list to choose from (removed for speed)
     // let revOptionsForThisSub = this.reviewers.filter((x) => {return x.email !== sub.author});
     let revOptions = this.getRevDropdown(this.reviewers);
     let i;
-    for (i of this.submissions.needingRevs) {
+    for (i of this.submissions.needingAssignments) {
       let index = i;  // important: had to use for the function defined below, to avoid it always binding i to last value.
       for (nom of subs[i].noms)
-        nomStr += nom.reviewerID + ", ";
+        nomList.push(<div key={nom.fName}>{nom.fName} {nom.lName},</div>);
+      for (req of subs[i].reqs)
+        reqList.push(<div key={req.fName}>{req.fName} {req.lName},</div>);
       tableRows.push(
         <tr key={rowIndex}>
           <td>{rowIndex++}</td>
           <td><a href={'comments?subID=' + subs[i].subID}>{subs[i].title}</a></td>
           <td>{subs[i].status}</td>
-          <td style={{maxWidth: '220px'}}>{nomStr}</td>
+          <td style={{maxWidth: '220px'}}>{nomList}</td>
+          <td style={{maxWidth: '220px'}}>{reqList}</td>
           <td style={{maxWidth: '260px'}}>{this.displayAssignedRevsCell(subs[i], subsCopyForDisplaying[i], revOptions)}</td> 
-          <td>{subsCopyForDisplaying[i].revDeadline === null ? <>assign: <input type="date" id="revDeadline" 
+          <td style={{paddingTop: '25px'}}>{subsCopyForDisplaying[i].revDeadline === null ? <><div style={{textAlign: 'left'}}>Assign deadline: </div><input type="date" id="revDeadline" 
                onChange={(ev) => {this.myChangeHandler(subs[index], ev)}} name="revDeadline" min="2020-01-01" 
                max="9999-01-01"/></> : String(subsCopyForDisplaying[i].revDeadline).substring(0,10)}</td> 
         </tr> 
       );
-      nomStr = "";
+      nomList = []; reqList = [];
     }
     return tableRows;
   }
@@ -360,9 +361,9 @@ class Editor extends React.Component {
 
   // show revs AND (4 - subs[i].revs.length) input select boxes of reviewers to select
   displayAssignedRevsCell = (sub, subsCopyForDisplaying, revOptions) => {
-    let currentRevs = "";
+    let currentRevs = [];
     for (let rev of subsCopyForDisplaying.revs)
-      currentRevs += rev.reviewerID + ", ";
+      currentRevs.push(<div key={rev.fName}>{rev.fName} {rev.lName},</div>);
     let maxRevsLeftToAssign = (4 - subsCopyForDisplaying.revs.length);
     let revSelect = [];
     for (let i = 0; i < maxRevsLeftToAssign; i++) {
@@ -396,17 +397,20 @@ class Editor extends React.Component {
         this.reviewers.push(user);
   }
 
-// BOOKMARK: things are generally working well now, but there's a problem here: 
+
+// FIX THIS: things are generally working well now, but there's a problem here: 
 // if I choose from a dropdown menu, then I change my mind and change my selection from that same dropdown, it has now
 // called this method twice, and two entries will be entered into the db and the internal data structure, which we don't want.
 
+// ALSO: it should check to make sure that reviewer you've selected hasn't already been assinged to that submission (isn't a member of sub.revs)
   myChangeHandler = (sub, event) => {
     let val =  event.target.value;
     if (event.target.name === "revDeadline") {
       sub.revDeadline = val;
       this.dbChangeQueries += `UPDATE SUBMISSION SET revDeadline = '${val}' WHERE subID = ${sub.subID}; `;
     } else {  // else new reviewer assigned to sub
-      const rev = {subID: sub.subID, reviewerID: val, deadline: sub.revDeadline, recommendation: null, comment: null};
+      const user = this.users.find(u => u.email === val);
+      const rev = {subID: sub.subID, reviewerID: val, deadline: sub.revDeadline, recommendation: null, comment: null, fName: user.fName, lName: user.lName};
       sub.revs.push(rev);
       this.dbChangeQueries += `INSERT INTO REVIEWS VALUES (${sub.subID}, '${val}', '${sub.revDeadline}', NULL, NULL); `;
     }
@@ -431,12 +435,24 @@ class Editor extends React.Component {
 // }
 
 
+
+// good place for handling side-effect logic, like doing something based on the current state, apparently
+  componentDidUpdate = () => {
+    if (this.state.currentPage === "reloadANAcomp")
+      this.setState({currentPage: "articlesNeedingAssignments"});
+  }
+
+
   menuSwitch = () => {
     switch(this.state.currentPage) {
       case "main":
         return this.mainMenuComp();
-      case "articlesNeedingRevsTable":
-        return this.articlesNeedingRevsTableComp();
+      case "articlesNeedingAssignments":
+        return this.articlesNeedingAssignmentsComp();
+      case "reloadANAcomp":
+        // this.setState({currentPage: "articlesNeedingAssignments"});  
+        // ^ moved this to componentDidUpdate() (above) to handle the warning
+        break;
       default: 
         return this.mainMenuComp();
     }

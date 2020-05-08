@@ -74,7 +74,7 @@ body::after {
   padding: 7px 0 0 0
 }
 
-#list-submissions th button, #articlesNeedingRevs th button {
+#list-submissions th button, #articlesNeedingAssignments th button {
   font-weight: 500;
   padding: 8px 10px;
   background: none;
@@ -85,7 +85,7 @@ body::after {
   height: 100%;
 }
 
-#list-submissions th, #articlesNeedingRevs th {
+#list-submissions th, #articlesNeedingAssignments th {
   padding: 0;
   margin: 0;
   background: #343a40;
