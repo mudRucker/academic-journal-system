@@ -171,7 +171,7 @@ class Editor extends React.Component {
     });
   }
 
-
+  
   calcSubStatsForMainPage = () => {
     this.submissions.data.forEach((sub, index, arr) => {
 
@@ -330,7 +330,7 @@ class Editor extends React.Component {
     let subsCopyForDisplaying = this.submissionsCopy.data;
     let nom, req;
     let nomList = [], reqList = [];
-    // FIX: the below line was used to ensure sub's author didn't appear in the revs list to choose from (removed for speed)
+    // FIX THIS: the below line was used to ensure sub's author didn't appear in the revs list to choose from (removed for speed)
     // let revOptionsForThisSub = this.reviewers.filter((x) => {return x.email !== sub.author});
     let revOptions = this.getRevDropdown(this.reviewers);
     let i;

@@ -113,3 +113,8 @@ body::after {
   color: white;
   text-decoration: underline;
 }
+
+.comment-container {
+    border-top: 1px solid black;
+    padding: 20px 0;
+}
