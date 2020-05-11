@@ -1,10 +1,12 @@
+// This thing is so janky. Could really use some refactoring.
+
 import React  from 'react';
 import Container from 'react-bootstrap/Container';
 import Table from 'react-bootstrap/Table';
 import '../App.css';
 
 
-function setUserEmail (email) { // using a static variable make this like a 1-time door
+function setUserEmail (email) { // using a static variable makes this like a 1-time door
   if ( typeof setUserEmail.ue == 'undefined' ) {
     setUserEmail.ue = email;
   }
@@ -18,11 +20,12 @@ class Review extends React.Component {
     super(props);
     
     this.state = {
-      subID: String(window.location).split('=')[1],
+      subID: String(window.location).split('=')[1], // FIX THIS: should be able to just pass this into the component
       reviewerID: setUserEmail(props.userEmail),
       deadline: '',
       recommendation: '',
-      comments: '',
+      comment: '',
+
       serverResponse: "",
       activeFunction: 2,
 
@@ -83,7 +86,7 @@ reviewBoxGate = (subID, reviewerID) => { // the in-class version of a 1-time doo
     this.setState({reviewerID: ""});
     this.setState({deadline: ""});
     this.setState({recommendation: ""});
-    this.setState({comments: ""});
+    this.setState({comment: ""});
     if (inclServResponse) this.setState({serverResponse: ""});
   }
 
@@ -100,23 +103,6 @@ reviewBoxGate = (subID, reviewerID) => { // the in-class version of a 1-time doo
         });
       });
     event.preventDefault();
-  }
-
-
-  mySubmitHandler_INSERT = (event) => {
-    fetch('http://localhost:9000/reviewAPI/insert', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(this.state)
-    }).then(response => {
-        response.text().then(msg => {
-          this.setState({serverResponse: JSON.stringify(msg)});
-          console.log(msg);
-        });
-      });
-
-    event.preventDefault();
-    this.resetState(false);
   }
 
 
@@ -471,14 +457,14 @@ class ViewEditReview extends Review {
 class EditReview extends ViewEditReview {
   constructor(props) {
     super(props);
-    this.state = {
+    this.state = {  // FIX: don't know wtf is going on with all this shyte... jesus. Clean this up.
       originalsubID: this.props.reviewInfo.subID,
 
       subID: this.props.reviewInfo.subID,
       reviewerID: this.props.reviewInfo.reviewerID,
       deadline: this.props.reviewInfo.deadline,
       recommendation: this.props.reviewInfo.recommendation,
-      comments: this.props.reviewInfo.comments,
+      comment: this.props.reviewInfo.comment,
       serverResponse: ""
     };
   }
@@ -532,9 +518,9 @@ class EditReview extends ViewEditReview {
           <p>Comments</p>
           <input
             type='text'
-            name='comments'
+            name='comment'
             size = '100'
-            value={this.state.comments}
+            value={this.state.comment}
             onChange={this.myChangeHandler}
           /><br/><br/>
 
@@ -563,19 +549,36 @@ class EditReview extends ViewEditReview {
 
 
 class AddReview extends Review {
+
   constructor(props)  {
     super(props);
-    this.state = {...this.state};
+    this.state = {...props};
+  }
+
+  mySubmitHandler_ADDREV= (event) => {
+    fetch('http://localhost:9000/reviewAPI/add-review', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(this.state)
+    }).then(response => {
+        response.text().then(msg => {
+          this.setState({serverResponse: JSON.stringify(msg)});
+          console.log(msg);
+        });
+      });
+
+    event.preventDefault();
+    this.resetState(false);
   }
 
   render() {
     return(
       <div className='submissionForm' style={{width: '700px'}}>
 
-          <p style={{paddingBottom: '10px'}}><strong>My deadline for submitting this review is: &nbsp; (deadline goes here)</strong></p>
+          <p style={{paddingBottom: '10px'}}><strong>The deadline for submitting this review is: &nbsp; (deadline goes here)</strong></p>
           {this.state.deadline}
 
-        <form onSubmit={this.mySubmitHandler_INSERT}>
+        <form onSubmit={this.mySubmitHandler_ADDREV}>
         
           <p>Reviewing as:</p>
           <input
@@ -598,10 +601,10 @@ class AddReview extends Review {
           <p>Comments for the author:</p>
           <textarea
             type='text'
-            name='comments'
+            name='comment'
             style={{ height: '150px'}}
             maxLength={500}
-            value={this.state.comments}
+            value={this.state.comment}
             onChange={this.myChangeHandler}
           /><br/><br/>
 

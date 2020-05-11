@@ -408,6 +408,7 @@ class Editor extends React.Component {
     if (event.target.name === "revDeadline") {
       sub.revDeadline = val;
       this.dbChangeQueries += `UPDATE SUBMISSION SET revDeadline = '${val}' WHERE subID = ${sub.subID}; `;
+      // BOOKMARK:  right here, it also needs to update the revDeadline for any REVIEWS entries that share this subID!
     } else {  // else new reviewer assigned to sub
       const user = this.users.find(u => u.email === val);
       const rev = {subID: sub.subID, reviewerID: val, deadline: sub.revDeadline, recommendation: null, comment: null, fName: user.fName, lName: user.lName};

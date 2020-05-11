@@ -58,7 +58,7 @@ class CommentsTable extends React.Component {
   }
 
 
-// BOOKMARK: get the comments showing properly
+
   GetCommentBody(index) {
     let revs = this.mySubsReviewData;
     let comments = [];
@@ -75,7 +75,7 @@ class CommentsTable extends React.Component {
     let reviewers = [];
     for (let i = 0; i < revs[index].length; i++) {
       reviewers.push(<ListGroup.Item action key={i} href={"#link" + revs[index][i].subID + "-" + i.toString()}>{revs[index][i].fName + 
-        " " + revs[index][i].lName + " - Review deadline: " + String(revs[index][i].deadline).substring(0,10)}</ListGroup.Item>);
+        " " + revs[index][i].lName + " - Rev. deadline: " + String(revs[index][i].deadline).substring(0,10)}</ListGroup.Item>);
     }
     return reviewers;
   }
@@ -103,7 +103,7 @@ class CommentsTable extends React.Component {
             <Col>{ this.GetJournalStatus(i) }</Col>
           </Row><br/>
 
-          <h4 className="pt-5, text-center">Reviewer comments</h4><br/>
+          <h4 className="pt-5, text-center">Reviewer feedback</h4><br/>
 
           <Tab.Container id="list-group-tabs-example" defaultActiveKey="#link1">
             <Row>
